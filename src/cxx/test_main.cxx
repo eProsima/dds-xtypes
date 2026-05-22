@@ -933,33 +933,8 @@ class DPListener : public DomainParticipantListener
 {
 public:
 #if defined(EPROSIMA_FAST_DDS)
-  /* Fast DDS 3.x does not fire on_inconsistent_topic for type-name mismatches.
-   * We emulate it: track remote endpoint discovery and emit the message from
-   * the run loop when a discovered endpoint has no matching reader/writer. */
-  std::atomic<bool> remote_endpoint_seen{false};
-  std::atomic<bool> endpoint_matched{false};
-  std::atomic<bool> inconsistent_printed{false};
-
-  void on_data_writer_discovery(
-          DomainParticipant*,
-          eprosima::fastdds::rtps::WriterDiscoveryStatus reason,
-          const PublicationBuiltinTopicData&, bool&) override {
-    using eprosima::fastdds::rtps::WriterDiscoveryStatus;
-    if (reason == WriterDiscoveryStatus::DISCOVERED_WRITER)
-        remote_endpoint_seen = true;
-  }
-  void on_data_reader_discovery(
-          DomainParticipant*,
-          eprosima::fastdds::rtps::ReaderDiscoveryStatus reason,
-          const SubscriptionBuiltinTopicData&, bool&) override {
-    using eprosima::fastdds::rtps::ReaderDiscoveryStatus;
-    if (reason == ReaderDiscoveryStatus::DISCOVERED_READER)
-        remote_endpoint_seen = true;
-  }
-
   void on_inconsistent_topic(Topic *topic, InconsistentTopicStatus) {
     FDDS_DECLARE_NAMES(topic);
-    inconsistent_printed = true;
 #else
   void on_inconsistent_topic(Topic *topic, const InconsistentTopicStatus &) {
     const char *topic_name = topic->get_name();
@@ -989,7 +964,6 @@ public:
     Topic      *topic      = dw->get_topic( );
 #if defined(EPROSIMA_FAST_DDS)
     FDDS_DECLARE_NAMES(topic);
-    if (status.current_count > 0) endpoint_matched = true;
 #else
     const char *topic_name = topic->get_name( );
     const char *type_name  = topic->get_type_name( );
@@ -1042,7 +1016,6 @@ public:
 #if defined(EPROSIMA_FAST_DDS)
     const TopicDescription *td   = dr->get_topicdescription( );
     FDDS_DECLARE_NAMES(td);
-    if (status.current_count > 0) endpoint_matched = true;
 #else
     TopicDescription *td         = dr->get_topicdescription( );
     const char       *topic_name = td->get_name( );
@@ -1429,9 +1402,6 @@ public:
   //-------------------------------------------------------------
   bool run_subscriber(TestOptions *options)
   {
-#if defined(EPROSIMA_FAST_DDS)
-    int inconsistent_ticks = 0;
-#endif
     while ( ! all_done )  {
       ReturnCode_t     retval;
       DynamicDataSeq   samples;
@@ -1493,20 +1463,6 @@ public:
       } while (retval == RETCODE_OK);
 
       usleep(100000);
-
-#if defined(EPROSIMA_FAST_DDS)
-      // Fast DDS doesn't fire on_inconsistent_topic for type mismatches.
-      // Detect: remote endpoint discovered but no reader-writer match after ~2.5s.
-      if (dp_listener.remote_endpoint_seen && !dp_listener.endpoint_matched
-              && !dp_listener.inconsistent_printed) {
-          if (++inconsistent_ticks >= 25) {
-              FDDS_DECLARE_NAMES(topic);
-              printf("on_inconsistent_topic() topic: '%s'  type: '%s'\n", topic_name, type_name);
-              fflush(stdout);
-              dp_listener.inconsistent_printed = true;
-          }
-      }
-#endif
     }
 
     return true;
@@ -1528,16 +1484,12 @@ public:
         return false;
     }
 
-#if defined(EPROSIMA_FAST_DDS)
-    int inconsistent_ticks_pub = 0;
-#endif
     while (!all_done) {
       DynamicDataWriter *ddw = dynamic_cast<DynamicDataWriter *>(dw);
 #if defined(RTI_CONNEXT_DDS)
       ddw->write(*dd, HANDLE_NIL);
 #elif defined(EPROSIMA_FAST_DDS)
-      if (dp_listener.endpoint_matched)
-          fdds_write(ddw, dd, HANDLE_NIL);
+      fdds_write(ddw, dd, HANDLE_NIL);
 #elif defined(TWINOAKS_COREDX)
       ddw->write(dd, HANDLE_NIL);
 #endif
@@ -1547,19 +1499,6 @@ public:
           print_data( dd );
         }
       usleep(1000000);
-
-#if defined(EPROSIMA_FAST_DDS)
-      // Detect type incompatibility: remote DataReader discovered but no match after ~2.5s.
-      if (dp_listener.remote_endpoint_seen && !dp_listener.endpoint_matched
-              && !dp_listener.inconsistent_printed) {
-          if (++inconsistent_ticks_pub >= 3) {  // 3 * 1s publisher loop = 3 seconds
-              FDDS_DECLARE_NAMES(topic);
-              printf("on_inconsistent_topic() topic: '%s'  type: '%s'\n", topic_name, type_name);
-              fflush(stdout);
-              dp_listener.inconsistent_printed = true;
-          }
-      }
-#endif
     }
     cleanup_data( dd );
     return true;

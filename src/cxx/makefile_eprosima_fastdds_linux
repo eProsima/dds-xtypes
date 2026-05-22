@@ -1,10 +1,16 @@
 ######################################################################
-# Build the OMG DDS-XTypes interoperability test for eProsima Fast DDS Pro
-#
-# Usage:
+# To compile, type:
 #   make -f makefile_eprosima_fastdds_linux
 #
-# Requires Fast DDS Pro built in /home/zesk/promonitor-ws/install/
+# This makefile assumes that your build environment is already correctly
+# configured. (For example, the correct version of your compiler and
+# linker should be on your PATH.)
+#
+# You should set the environment variable FASTDDS_HOME to point to where
+# eProsima Fast DDS is installed:
+#   colcon build --merge-install --install-dir <directory>
+#   export FASTDDS_HOME=<directory>
+#
 ######################################################################
 
 COMPILER       = g++
@@ -16,19 +22,13 @@ SYSLIBS        = -ldl -lm -lpthread -lrt
 DEFINES        = -DEPROSIMA_FAST_DDS
 
 ifndef FASTDDS_HOME
-FASTDDS_HOME := /home/zesk/promonitor-ws/install/fastdds
-endif
-
-ifndef FASTCDR_HOME
-FASTCDR_HOME := /home/zesk/promonitor-ws/install/fastcdr
+$(error FASTDDS_HOME not defined. Set it to your Fast DDS installation directory.)
 endif
 
 INCLUDES = -I. \
-           -I$(FASTDDS_HOME)/include \
-           -I$(FASTCDR_HOME)/include
+           -I$(FASTDDS_HOME)/include
 
-LIBS = -L$(FASTDDS_HOME)/lib -lfastdds \
-       -L$(FASTCDR_HOME)/lib -lfastcdr \
+LIBS = -L$(FASTDDS_HOME)/lib -lfastdds -lfastcdr \
        $(SYSLIBS)
 
 EXEC   = fastdds_pro_linux64
