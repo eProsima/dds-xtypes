@@ -1,0 +1,49 @@
+######################################################################
+# To compile, type:
+#   make -f makefile_eprosima_fastdds_linux
+#
+# This makefile assumes that your build environment is already correctly
+# configured. (For example, the correct version of your compiler and
+# linker should be on your PATH.)
+#
+# You should set the environment variable FASTDDS_HOME to point to where
+# eProsima Fast DDS is installed:
+#   colcon build --merge-install --install-dir <directory>
+#   export FASTDDS_HOME=<directory>
+#
+######################################################################
+
+COMPILER       = g++
+COMPILER_FLAGS = -std=c++17 -Wall -Wextra -m64
+LINKER         = g++
+LINKER_FLAGS   = -m64 -Wl,--no-as-needed
+SYSLIBS        = -ldl -lm -lpthread -lrt
+
+DEFINES        = -DEPROSIMA_FAST_DDS
+
+ifndef FASTDDS_HOME
+$(error FASTDDS_HOME not defined. Set it to your Fast DDS installation directory.)
+endif
+
+INCLUDES = -I. \
+           -I$(FASTDDS_HOME)/include
+
+LIBS = -L$(FASTDDS_HOME)/lib -lfastdds -lfastcdr \
+       $(SYSLIBS)
+
+EXEC   = fastdds_pro_linux64
+OBJDIR = objs/fastdds_pro
+
+$(OBJDIR)/$(EXEC): $(OBJDIR) $(OBJDIR)/test_main.o
+	$(LINKER) $(LINKER_FLAGS) -o $@ $(OBJDIR)/test_main.o $(LIBS)
+
+$(OBJDIR)/test_main.o: test_main.cxx variant_eprosima_fastdds.h
+	$(COMPILER) $(COMPILER_FLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+clean:
+	rm -rf $(OBJDIR)
+
+.PHONY: clean
