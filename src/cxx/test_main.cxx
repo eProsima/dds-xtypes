@@ -932,11 +932,10 @@ public:
 class DPListener : public DomainParticipantListener
 {
 public:
+  void on_inconsistent_topic(Topic *topic, const InconsistentTopicStatus &) {
 #if defined(EPROSIMA_FAST_DDS)
-  void on_inconsistent_topic(Topic *topic, InconsistentTopicStatus) {
     FDDS_DECLARE_NAMES(topic);
 #else
-  void on_inconsistent_topic(Topic *topic, const InconsistentTopicStatus &) {
     const char *topic_name = topic->get_name();
     const char *type_name  = topic->get_type_name();
 #endif
