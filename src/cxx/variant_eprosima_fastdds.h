@@ -722,6 +722,8 @@ static DDS::ReturnCode_t _fdds_set_json_array_value(
     if (_fdds_array_to_integral_seq(value, u8)) {
         DDS::ReturnCode_t ret = dd->set_uint8_values(id, u8);
         if (ret == DDS::RETCODE_OK) return ret;
+        ret = dd->set_byte_values(id, u8);
+        if (ret == DDS::RETCODE_OK) return ret;
     }
     DDS::Int16Seq i16;
     if (_fdds_array_to_integral_seq(value, i16)) {
@@ -865,6 +867,8 @@ static DDS::ReturnCode_t _fdds_set_json_value(
             if (ret == DDS::RETCODE_OK) return ret;
             ret = dd->set_uint8_value(id, static_cast<uint8_t>(value.i));
             if (ret == DDS::RETCODE_OK) return ret;
+            ret = dd->set_byte_value(id, static_cast<uint8_t>(value.i));
+            if (ret == DDS::RETCODE_OK) return ret;
             ret = dd->set_float64_value(id, static_cast<double>(value.i));
             if (ret == DDS::RETCODE_OK) return ret;
             return dd->set_boolean_value(id, value.i != 0);
@@ -957,6 +961,12 @@ inline void print_data(DDS::DynamicData* dd)
         }
         uint8_t u8 = 0;
         if (dd->get_uint8_value(u8, id) == DDS::RETCODE_OK) {
+            if (!first) printf(", ");
+            printf("\"%s\": %u", nm.c_str(), (unsigned)u8);
+            first = false;
+            continue;
+        }
+        if (dd->get_byte_value(u8, id) == DDS::RETCODE_OK) {
             if (!first) printf(", ");
             printf("\"%s\": %u", nm.c_str(), (unsigned)u8);
             first = false;
